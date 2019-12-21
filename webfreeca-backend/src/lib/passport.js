@@ -61,7 +61,6 @@ passport.use('need-token', new JwtStrategy({
     jwtFromRequest : ExtractJwt.fromAuthHeaderAsBearerToken(),
     secretOrKey : process.env.JWT_SECRET
 },async (jwtPayload, done) => {
-    console.log(jwtPayload);
     // 유저 정보가 없을 경우
     if(!jwtPayload){
         done(null   ,false  ,{message : '로그인이 필요한 서비스입니다.', status :403});
@@ -111,7 +110,7 @@ const loginLocal = () => (ctx) =>
 
 const needToken = () => (ctx) =>
     passport.authenticate('need-token' ,{session : false} ,(err, user, info) =>{
-        console.log(info.message);
+        console.log(user);
         ctx.body = info.message
         if(info.status == 403){
             console.log('로그아웃됨');

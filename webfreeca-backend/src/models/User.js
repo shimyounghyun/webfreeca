@@ -58,13 +58,17 @@ User.statics.findExistancy = function({id,userName}){
 User.methods = {
     view(full) {
         let view = {};
+        let fields = viewFields(full);
+        fields.forEach((field) => { view[field] = this[field] })
+
+        return view
+    },
+    viewFields(full){
         let fields = ['id','userName','stationName']
         if(full){
             fields = [...fields, 'createdAt']
         }
-        fields.forEach((field) => { view[field] = this[field] })
-
-        return view
+        return fields;
     },
     authenticate(pw){
         return bcrypt.compareSync(pw, this.pw);

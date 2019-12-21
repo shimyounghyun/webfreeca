@@ -7,11 +7,9 @@ const {JWT_SECRET: secret} = process.env;
 /**
  * 토큰 생성
  */
-const createToken = (payload, subject) =>{    
-    delete payload.iat;
-    delete payload.exp;
-    delete payload.iss;
-    delete payload.sub;
+const createToken = (payload, subject) =>{
+    payload = _.pick(['id','userName','stationName','createdAt'], payload);
+    console.log(payload);
     return new Promise(
             (resolve, reject) => {
                 jwt.sign(
