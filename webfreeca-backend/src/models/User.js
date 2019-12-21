@@ -2,6 +2,7 @@ import mongoose from 'mongoose';
 import {Schema} from 'mongoose';
 import crypto from 'crypto';
 import bcrypt from 'bcrypt-nodejs';
+import {createToken} from '../lib/token';
 
 const {PASSWORD_HASH_KEY : salt} = process.env;
 
@@ -67,7 +68,11 @@ User.methods = {
     },
     authenticate(pw){
         return bcrypt.compareSync(pw, this.pw);
+    },
+    async generateToken(){
+        return await createToken(this.view(true),'user')
     }
+    
 }
 
 

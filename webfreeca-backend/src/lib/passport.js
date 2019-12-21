@@ -2,6 +2,7 @@ import passport from 'koa-passport'
 import { Strategy as JwtStrategy, ExtractJwt } from 'passport-jwt'
 import { Strategy as LocalStrategy} from 'passport-local'
 import User from '../models/User';
+import {createToken, decodeToken} from '../lib/token';
 
 require('dotenv').config();
 
@@ -40,14 +41,14 @@ async (id, pw, done) => {
             return;
         }
 
-        const authenticatePw = await user.authenticate(pw);
-        console.log("authen",authenticatePw);
+        const authenticatePw = await user.authenticate(pw);        
         if(!authenticatePw){
             done(null, {id}, {message : '비밀번호가 일치하지 않습니다.', status : 500});
             return;
         }
-
-        done(null, user, {message : '로그인 성공', status : 200});
+        // 토큰 생성
+        const token = await createToken(user.view(true),'user');
+        done(null, user, {message : '로그인 성공', status : 200, token});
     }catch(e){
         console.log(e);
         done(null   ,false ,{message : '로그인에 실패했습니다.', status : 500})
@@ -56,20 +57,28 @@ async (id, pw, done) => {
 }
 ));
 
-passport.use('jwt', new JwtStrategy({
+passport.use('need-token', new JwtStrategy({
     jwtFromRequest : ExtractJwt.fromAuthHeaderAsBearerToken(),
     secretOrKey : process.env.JWT_SECRET
-},(jwtPayload, done) => {
-    // 유저 정보로 일치하는 회원 찾기
-    console.log(jwtPayload)
-    return new Promise((resolve, reject)=>{
-        resolve(true)
-    })
-    .then(result => result ?
-        done(null   ,true  ,{message : 'login success'}) :
-        done(null   ,false ,{message : 'login fail'})
-    )
-    .catch((err)=>done(err))
+},async (jwtPayload, done) => {
+    console.log(jwtPayload);
+    // 유저 정보가 없을 경우
+    if(!jwtPayload){
+        done(null   ,false  ,{message : '로그인이 필요한 서비스입니다.', status :403});
+        return;
+    }
+
+    try{
+        // 토큰 만료가 3시간 남았을 경우 새 토큰으로 교체
+        if(jwtPayload.exp - jwtPayload.iat < 60 * 60 * 3){
+            const freshToken = await createToken(jwtPayload, 'user');
+            done(null ,freshToken ,{message : '토큰 교체', status:201} )
+        }
+        done(null ,true ,{message : '인증 성공', status:200} )
+    }catch(e){
+        console.log(e);
+        done(null   ,false ,{message : '토큰 교체 실패', status:403})
+    }    
 }))
 
 // successRedirect: '/main',
@@ -87,19 +96,27 @@ const joinLocal = () => (ctx) =>
     })(ctx)
 
 const loginLocal = () => (ctx) =>
-    passport.authenticate('login-local',{session : false},(err, user, info) =>{
+    passport.authenticate('login-local',{session : false},async (err, user, info) =>{
         if(info && info.status == 200){
-            console.log('로그인 성공');
+            // 유저 정보 request에 담기
+            ctx.login(user.view(true), {session : false});
+            // 토큰 정보
+            ctx.body = {token : info.token}
+            console.log('로그인 성공',info.token);
         }else{
             console.log(info.message);
             ctx.status = info.status;
         }
     })(ctx)
 
-const login = () => (ctx) =>
-    passport.authenticate('jwt' ,{session : false} ,(err, user, info) =>{
-        ctx.login(info, {session : false});        
-        console.log(ctx.req.user);
+const needToken = () => (ctx) =>
+    passport.authenticate('need-token' ,{session : false} ,(err, user, info) =>{
+        console.log(info.message);
+        ctx.body = info.message
+        if(info.status == 403){
+            console.log('로그아웃됨');
+            ctx.logout();
+        }
     })(ctx)
 
-module.exports = { joinLocal, loginLocal, login };
+module.exports = { joinLocal, loginLocal, needToken };

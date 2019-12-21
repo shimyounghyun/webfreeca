@@ -1,14 +1,18 @@
 import jwt from 'jsonwebtoken'
 import crypto from 'crypto'
-
+import _, { entries } from 'fxjs/Strict'
 
 const {JWT_SECRET: secret} = process.env;
 
 /**
  * 토큰 생성
  */
-const createToken = (payload, subject) =>
-        new Promise(
+const createToken = (payload, subject) =>{    
+    delete payload.iat;
+    delete payload.exp;
+    delete payload.iss;
+    delete payload.sub;
+    return new Promise(
             (resolve, reject) => {
                 jwt.sign(
                     payload, 
@@ -22,6 +26,7 @@ const createToken = (payload, subject) =>
                 )
             }
         );
+}
 
 const decodeToken = (token) =>
         new Promise(
