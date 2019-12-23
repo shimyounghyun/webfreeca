@@ -1,8 +1,13 @@
 import React from "react";
-import Header from "../components/structure/Header";
+import MainStructure from "../components/structure/MainStructure";
+import RegisterForm from "../components/register/RegisterForm";
 
 const Main = () => {
-    return <Header/>;
+    return (
+        <MainStructure>
+            <RegisterForm/>
+        </MainStructure>
+    );
 }
 
 export default Main;
